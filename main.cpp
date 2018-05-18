@@ -20,6 +20,7 @@ typedef CGAL::Creator_uniform_3<double, Point3> Creator;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron3;
 typedef Polyhedron3::Vertex_iterator VertexIterator;
 typedef Polyhedron3::Facet_iterator FacetIterator;
+typedef Polyhedron3::Halfedge_handle HalfEdgeHandle;
 typedef CGAL::Convex_hull_d_traits_3<Kernel> HullTraits3;
 typedef CGAL::Convex_hull_d<HullTraits3> ConvexHull3;
 
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
     // calculate convex hull
     timer.start();
 
-    for (int i = 1; i <= N; ++i) {
+    for (int i = 0; i < N; ++i) {
         convHull.insert(points[i]);
     }
     
@@ -82,7 +83,7 @@ int main(int argc, char *argv[]) {
     CGAL::convex_hull_d_to_polyhedron_3(convHull, polyHed);
 
     timer.stop();
-    
+
     // print vertices
     for (VertexIterator itr = polyHed.vertices_begin(); itr != polyHed.vertices_end(); ++itr) {
         cout << itr->point() << endl;
@@ -94,5 +95,6 @@ int main(int argc, char *argv[]) {
     
     // print time of calculation of convex hull
     cout << "Time passed: " << timer.time() << " seconds" << endl;
+
     return 0;
 }
