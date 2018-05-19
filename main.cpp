@@ -2,38 +2,23 @@
 #include <fstream>
 #include <cstdlib>
 #include <cstdio>
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/point_generators_3.h>
-#include <CGAL/Convex_hull_d.h>
-#include <CGAL/Convex_hull_d_traits_3.h>
-#include <CGAL/Convex_hull_d_to_polyhedron_3.h>
-#include <CGAL/Polyhedron_3.h>
-#include <CGAL/Kernel/global_functions.h>
-#include <CGAL/Timer.h>
+#include "beneath_beyond_3.h"
 
 using namespace std;
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
-typedef Kernel::Point_3 Point3;
-typedef Kernel::Plane_3 Plane3;
-typedef CGAL::Creator_uniform_3<double, Point3> Creator;
-typedef CGAL::Polyhedron_3<Kernel> Polyhedron3;
-typedef Polyhedron3::Vertex_iterator VertexIterator;
-typedef Polyhedron3::Facet_iterator FacetIterator;
-typedef Polyhedron3::Halfedge_handle HalfEdgeHandle;
-typedef CGAL::Convex_hull_d_traits_3<Kernel> HullTraits3;
-typedef CGAL::Convex_hull_d<HullTraits3> ConvexHull3;
-
-struct planeEquation {
-    template <class Facet>
-    typename Facet::Plane_3 operator()(Facet &f) {
-        typename Facet::Halfedge_handle h = f.halfedge();
-        typedef typename Facet::Plane_3  Plane;
-        return Plane(h->vertex()->point(),
-                     h->next()->vertex()->point(),
-                     h->next()->next()->vertex()->point());
+void printInformation(Polyhedron3 polyHed, CGAL::Timer timer) {
+    // print vertices
+    for (VertexIterator itr = polyHed.vertices_begin(); itr != polyHed.vertices_end(); ++itr) {
+        cout << itr->point() << endl;
     }
-};
+    
+    // print facets as plane equations
+    transform(polyHed.facets_begin(), polyHed.facets_end(), polyHed.planes_begin(), planeEquation());
+    copy(polyHed.planes_begin(), polyHed.planes_end(), ostream_iterator<Plane3>(cout, "\n"));
+    
+    // print time of calculation of convex hull
+    cout << "Time passed: " << timer.time() << " seconds" << endl;
+}
 
 
 int main(int argc, char *argv[]) {
@@ -42,6 +27,7 @@ int main(int argc, char *argv[]) {
     int N;
     ifstream inputFile;
     vector<Point3> points;
+    Polyhedron3 polyHed;
     ConvexHull3 convHull(3);
     CGAL::Timer timer;
 
@@ -72,29 +58,26 @@ int main(int argc, char *argv[]) {
         inputFile.close();
     }
     
-    // calculate convex hull
+    // calculate convex hull with algorithm from question 1
     timer.start();
 
     for (int i = 0; i < N; ++i) {
         convHull.insert(points[i]);
     }
     
-    Polyhedron3 polyHed;
     CGAL::convex_hull_d_to_polyhedron_3(convHull, polyHed);
 
     timer.stop();
-
-    // print vertices
-    for (VertexIterator itr = polyHed.vertices_begin(); itr != polyHed.vertices_end(); ++itr) {
-        cout << itr->point() << endl;
-    }
+    printInformation(polyHed, timer);
     
-    // print facets as plane equations
-    transform(polyHed.facets_begin(), polyHed.facets_end(), polyHed.planes_begin(), planeEquation());
-    copy(polyHed.planes_begin(), polyHed.planes_end(), ostream_iterator<Plane3>(cout, "\n"));
+    // calculate convex hull with algorithm from question 2
+    timer.start();
     
-    // print time of calculation of convex hull
-    cout << "Time passed: " << timer.time() << " seconds" << endl;
+    polyHed.clear();
+    beneath_beyond_3(points.begin(), points.end(), polyHed);
+    
+    timer.stop();
+    printInformation(polyHed, timer);
 
     return 0;
 }
