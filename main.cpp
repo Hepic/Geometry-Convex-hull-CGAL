@@ -72,12 +72,13 @@ int main(int argc, char *argv[]) {
     
     // calculate convex hull with algorithm from question 2
     timer.start();
-    
     polyHed.clear();
-    beneath_beyond_3(points.begin(), points.end(), polyHed);
     
-    timer.stop();
-    printInformation(polyHed, timer);
-
+    // returns true only if there is no degeneracy
+    if (beneath_beyond_3(points.begin(), points.end(), polyHed)) {
+        timer.stop();
+        printInformation(polyHed, timer);
+    }
+    
     return 0;
 }

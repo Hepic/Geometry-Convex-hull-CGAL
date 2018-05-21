@@ -2,6 +2,7 @@
 #define BENEATH_BEYOND_3
 
 #include <iostream>
+#include <map>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/point_generators_3.h>
 #include <CGAL/Convex_hull_d.h>
@@ -46,30 +47,37 @@ class Build_polyHed : public CGAL::Modifier_base<HDS> {
         Point3 point;
         vector<Point3> borderVertices;
         int vertNum = 4, facetNum = 10; //TODO fix facetNum
+        map<Point3, int> index; // use map to find the position of each vertex
 
     public:
         void operator()(HDS &hds) {
             CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
-            B.begin_surface(vertNum, facetNum, 0, CGAL::Polyhedron_incremental_builder_3< HDS >::ABSOLUTE_INDEXING);
+            B.begin_surface(vertNum, facetNum, 0, CGAL::Polyhedron_incremental_builder_3<HDS>::ABSOLUTE_INDEXING);
             typedef typename HDS::Vertex Vertex;
             typedef typename Vertex::Point Point;
+            int pos = 0;
             
-            B.add_vertex(point);
-            /* B.begin_facet();
-
-            for (FacetIterator facetItr = polyHed.facets_begin(); facetItr != polyHed.facets_end(); ++facetItr) {
-                HalfEdgeHandle edge = facetItr->halfedge();
-                Point3 pnt1 = edge->vertex()->point();
-                Point3 pnt2 = edge->next()->vertex()->point();
-                Point3 pnt3 = edge->next()->next()->vertex()->point();
-
-                B.add_vertex_to_facet(pnt1);
-                B.add_vertex_to_facet(pnt2);
-                B.add_vertex_to_facet(pnt3);
-                B.end_facet();
+            // insert all old vertices
+            for (VertexIterator itr = hds.vertices_begin(); itr != hds.vertices_end(); ++itr) {
+                index[itr->point()] = pos++;
             }
             
-            B.end_surface();*/
+            // insert new vertex
+            B.add_vertex(point);
+            index[point] = pos;
+            
+            // insert new facets
+            for (int i = 0; i < borderVertices.size(); ++i) {
+                B.begin_facet();
+                
+                B.add_vertex_to_facet(index[borderVertices[i]]);
+                B.add_vertex_to_facet(index[borderVertices[(i + 1) % (int)borderVertices.size()]]);
+                B.add_vertex_to_facet(index[point]);
+                
+                B.end_facet();
+            }
+
+            B.end_surface();
         }
 
         void updateParameters(const vector<Point3> &borderVertices, Point3 point) {
@@ -77,13 +85,13 @@ class Build_polyHed : public CGAL::Modifier_base<HDS> {
             this->point = point;
 
             ++this->vertNum;
-            this->facetNum *= 2;
+            this->facetNum += (int)borderVertices.size();
         }
 };
 
 
 template <typename Iterator, typename objType>
-void beneath_beyond_3(Iterator begin, Iterator end, objType &obj) { 
+bool beneath_beyond_3(Iterator begin, Iterator end, objType &obj) { 
     // sort points lexicographical
     sort(begin, end);
     
@@ -108,12 +116,12 @@ void beneath_beyond_3(Iterator begin, Iterator end, objType &obj) {
             Point3 pnt2 = edge->next()->vertex()->point();
             Point3 pnt3 = edge->next()->next()->vertex()->point();
             
-            cout << pnt1 << " " << pnt2 << " " << pnt3 << " compare with " << *itr << " == ";
-            cout << CGAL::orientation(pnt1, pnt2, pnt3, *itr) << endl; 
-            
             // check orientation of points
             if (CGAL::orientation(pnt1, pnt2, pnt3, *itr) == 1) {
                 obj.erase_facet(edge); 
+            } else if (CGAL::orientation(pnt1, pnt2, pnt3, *itr) == 0) {
+                cout << "DEGENERACY" << endl;
+                return false;
             }
         }
         
@@ -127,17 +135,20 @@ void beneath_beyond_3(Iterator begin, Iterator end, objType &obj) {
                 
                 // add all distinct border vertices
                 while (edgeItr->vertex()->point() != tempItr->vertex()->point()) {
-                    borderVertices.push_back(edgeItr->vertex()->point());
+                    borderVertices.push_back(tempItr->vertex()->point());
                     tempItr = tempItr->next();
                 }
                 
                 break;
             }
         }
-
+        
+        // update polyhedron
         builder.updateParameters(borderVertices, *itr);
-        //obj.delegate(builder);
+        obj.delegate(builder);
     }
+
+    return true;
 }
 
 #endif
