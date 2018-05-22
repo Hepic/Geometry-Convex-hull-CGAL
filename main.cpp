@@ -66,8 +66,9 @@ int main(int argc, char *argv[]) {
     }
     
     CGAL::convex_hull_d_to_polyhedron_3(convHull, polyHed);
-
     timer.stop();
+
+    cout << "Convex hull from question 1\n---------------------------\n";
     printInformation(polyHed, timer);
     
     // calculate convex hull with algorithm from question 2
@@ -77,6 +78,8 @@ int main(int argc, char *argv[]) {
     // returns true only if there is no degeneracy
     if (beneath_beyond_3(points.begin(), points.end(), polyHed)) {
         timer.stop();
+        
+        cout << "\nConvex hull from question 2\n---------------------------\n";
         printInformation(polyHed, timer);
     }
     

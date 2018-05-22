@@ -24,6 +24,7 @@ typedef CGAL::Polyhedron_3<Kernel> Polyhedron3;
 typedef Polyhedron3::Vertex_iterator VertexIterator;
 typedef Polyhedron3::Facet_iterator FacetIterator;
 typedef Polyhedron3::Halfedge_iterator HalfEdgeIterator;
+typedef Polyhedron3::Halfedge_around_facet_circulator HalfEdgeAroundFacetCirculator;
 typedef Polyhedron3::Halfedge_handle HalfEdgeHandle;
 typedef Polyhedron3::HalfedgeDS HalfedgeDS;
 typedef CGAL::Convex_hull_d_traits_3<Kernel> HullTraits3;
@@ -44,9 +45,9 @@ struct planeEquation {
 template <class HDS>
 class Build_polyHed : public CGAL::Modifier_base<HDS> {
     private:
+        int vertNum = 4, facetNum = 4;
         Point3 point;
         vector<Point3> borderVertices;
-        int vertNum = 4, facetNum = 10; //TODO fix facetNum
         map<Point3, int> index; // use map to find the position of each vertex
 
     public:
@@ -105,8 +106,10 @@ bool beneath_beyond_3(Iterator begin, Iterator end, objType &obj) {
     
     // create initial tetrahedron
     obj.make_tetrahedron(*initIters[0], *initIters[1], *initIters[2], *initIters[3]);
+
     Build_polyHed<HalfedgeDS> builder;
     vector<Point3> borderVertices;
+    Point3 innerPnt;
 
     for (; itr != end; ++itr) {
         // iterate over facets and erase the red vertices, edges, facets
@@ -116,8 +119,17 @@ bool beneath_beyond_3(Iterator begin, Iterator end, objType &obj) {
             Point3 pnt2 = edge->next()->vertex()->point();
             Point3 pnt3 = edge->next()->next()->vertex()->point();
             
-            // check orientation of points
-            if (CGAL::orientation(pnt1, pnt2, pnt3, *itr) == 1) {
+            // find an inner point of current convex hull. It does at most four iterations, so it runs in O(1)
+            for (VertexIterator vertexItr = obj.vertices_begin(); vertexItr != obj.vertices_end(); ++vertexItr) {
+                // inner point must be different from the points of the facet
+                if (vertexItr->point() != pnt1 && vertexItr->point() != pnt2 && vertexItr->point() != pnt3) {
+                    innerPnt = vertexItr->point();
+                    break;
+                }
+            }
+            
+            // compare orientation of (facet points, new point) with orientation of (facet points, inner point)
+            if (CGAL::orientation(pnt1, pnt2, pnt3, *itr) != CGAL::orientation(pnt1, pnt2, pnt3, innerPnt)) {
                 obj.erase_facet(edge); 
             } else if (CGAL::orientation(pnt1, pnt2, pnt3, *itr) == 0) {
                 cout << "DEGENERACY" << endl;
@@ -130,10 +142,10 @@ bool beneath_beyond_3(Iterator begin, Iterator end, objType &obj) {
 
         for (HalfEdgeIterator edgeItr = obj.halfedges_begin(); edgeItr != obj.halfedges_end(); ++edgeItr) {
             if (edgeItr->is_border()) {
+                // find all distinct border vertices
                 borderVertices.push_back(edgeItr->vertex()->point());
                 HalfEdgeIterator tempItr = edgeItr->next();
                 
-                // add all distinct border vertices
                 while (edgeItr->vertex()->point() != tempItr->vertex()->point()) {
                     borderVertices.push_back(tempItr->vertex()->point());
                     tempItr = tempItr->next();
