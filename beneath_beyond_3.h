@@ -133,6 +133,7 @@ bool beneath_beyond_3(Iterator begin, Iterator end, objType &obj) {
                 obj.erase_facet(edge); 
             } else if (CGAL::orientation(pnt1, pnt2, pnt3, *itr) == 0) {
                 cout << "DEGENERACY" << endl;
+                cout << pnt1 << " " << pnt2 << " " << pnt3 << " " << *itr << endl;
                 return false;
             }
         }
